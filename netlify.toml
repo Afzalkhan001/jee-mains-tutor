@@ -4,9 +4,15 @@
 
 [functions]
   directory = "netlify/functions"
+  # Increase timeout from default 10s to 26s for quiz generation
+  # Note: Free tier max is 10s, Pro tier allows up to 26s
+  # Background functions can run up to 15min but require different setup
 
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
 
+# Set specific function timeout for quiz (requires Netlify Pro)
+[functions."quiz"]
+  timeout = 26

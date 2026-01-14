@@ -35,7 +35,9 @@ function normalize(body) {
   const n = Number(body.nQuestions || 5);
   const difficulty = String(body.difficulty || "mixed").trim();
 
-  const nQuestions = Number.isFinite(n) ? Math.max(3, Math.min(15, Math.floor(n))) : 5;
+  // Limit to 8 questions max to avoid Netlify function timeout (10s on free tier)
+  // Each question takes ~1-2s to generate
+  const nQuestions = Number.isFinite(n) ? Math.max(3, Math.min(8, Math.floor(n))) : 5;
   if (!topic) return { ok: false, error: "Missing required field: topic" };
 
   const allowed = new Set(["easy", "medium", "hard", "mixed"]);
@@ -100,12 +102,12 @@ async function callOpenAI({ systemPrompt, userMessage, nQuestions }) {
 
 function parseStrictJson(text) {
   let cleaned = String(text).trim();
-  
+
   // Remove markdown code blocks if present
   cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, "");
   cleaned = cleaned.replace(/\n?```\s*$/i, "");
   cleaned = cleaned.trim();
-  
+
   try {
     return JSON.parse(cleaned);
   } catch {
@@ -154,13 +156,13 @@ exports.handler = async (event) => {
   if (cached) return json(200, { cached: true, cacheKey, quiz: cached });
 
   try {
-    const raw = await callOpenAI({ 
-      systemPrompt: JEE_QUIZ_SYSTEM_PROMPT, 
-      userMessage, 
-      nQuestions: normalized.nQuestions 
+    const raw = await callOpenAI({
+      systemPrompt: JEE_QUIZ_SYSTEM_PROMPT,
+      userMessage,
+      nQuestions: normalized.nQuestions
     });
     const quiz = parseStrictJson(raw);
-    
+
     // Validate quiz structure
     if (!quiz || typeof quiz !== "object") {
       throw new Error("Invalid quiz structure: expected object");
@@ -168,7 +170,7 @@ exports.handler = async (event) => {
     if (!Array.isArray(quiz.items)) {
       throw new Error("Invalid quiz structure: missing items array");
     }
-    
+
     cacheSet(cacheKey, quiz);
     return json(200, { cached: false, cacheKey, quiz });
   } catch (err) {
