@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "subject": "physics",
+  "chapterId": "units-and-dimensions",
+  "chapterName": "Units & Dimensions",
+  "weightage": "medium",
+  "difficulty": "easy",
+  "subtopics": [
+    {
+      "id": "dimensional-analysis",
+      "name": "Dimensional analysis (checking, derivation, limitations)",
+      "difficulty": "easy",
+      "weightage": "high",
+      "tags": ["must-know", "pyq-heavy", "nta-trap"]
+    }
+  ],
+  "formulas": [
+    {
+      "id": "dimension",
+      "expression": "[Quantity] = M^a L^b T^c (use power comparison)",
+      "tags": ["must-memorize"]
+    }
+  ],
+  "shortcuts": [
+    "Option elimination: only the dimensionally correct option can be correct (unless question itself is wrong)."
+  ],
+  "traps": [
+    "Dimensional analysis cannot give dimensionless constants (π, 1/2, etc.).",
+    "If multiple variables share same dimensions, method can fail (non-unique)."
+  ],
+  "pyqReference": [{ "year": 2021, "note": "Check correct formula by dimensions" }]
+}
+

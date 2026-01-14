@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "subject": "math",
+  "chapterId": "vectors",
+  "items": [
+    {
+      "id": "m-vectors-2019-01",
+      "year": 2019,
+      "difficulty": "easy",
+      "question": "If a·b = 0 and both vectors are non-zero, then angle between a and b is:",
+      "options": ["0°", "45°", "90°", "180°"],
+      "correctIndex": 2,
+      "shortSolution": "a·b = |a||b|cosθ = 0 with |a||b|≠0 ⇒ cosθ=0 ⇒ θ=90°.",
+      "whyOthersWrong": [
+        "0° implies parallel ⇒ dot product maximum positive, not zero.",
+        "45° gives cos45 = 1/√2 ⇒ dot product non-zero.",
+        "180° implies anti-parallel ⇒ dot product negative, not zero."
+      ]
+    },
+    {
+      "id": "m-vectors-2020-01",
+      "year": 2020,
+      "difficulty": "medium",
+      "question": "For vectors a and b, if |a| = 5, |b| = 3 and the angle between them is 60°, then a·b equals:",
+      "options": ["15", "7.5", "30", "0"],
+      "correctIndex": 1,
+      "shortSolution": "a·b = |a||b|cos60 = 5×3×(1/2) = 7.5.",
+      "whyOthersWrong": [
+        "15 would correspond to cosθ = 1 (θ=0°).",
+        "30 would correspond to cosθ = 2 (impossible).",
+        "0 would correspond to cosθ = 0 (θ=90°)."
+      ]
+    },
+    {
+      "id": "m-vectors-2022-01",
+      "year": 2022,
+      "difficulty": "medium",
+      "question": "If a = i and b = 3j + 4k, then |a×b| is:",
+      "options": ["4", "5", "7", "12"],
+      "correctIndex": 1,
+      "shortSolution": "a×b = i×(3j+4k) = 3(i×j) + 4(i×k) = 3k - 4j. So |a×b| = √(0^2 + (-4)^2 + 3^2) = 5.",
+      "whyOthersWrong": [
+        "4 would happen if you wrongly take only 4k component and ignore 3j.",
+        "7 is a common √(3^2+4^2) confusion without checking cross product direction components.",
+        "12 would be |a||b| without sinθ (wrong because θ=90° here but |b|=5, not 12)."
+      ]
+    }
+  ]
+}
+

@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "subject": "math",
+  "chapterId": "vectors",
+  "chapterName": "Vectors",
+  "weightage": "high",
+  "difficulty": "medium",
+  "subtopics": [
+    {
+      "id": "basics",
+      "name": "Vector basics (magnitude, unit vector)",
+      "difficulty": "easy",
+      "weightage": "medium",
+      "tags": ["ncert-core", "foundation"]
+    },
+    {
+      "id": "addition",
+      "name": "Vector addition & section formula idea",
+      "difficulty": "easy",
+      "weightage": "medium",
+      "tags": ["pyq-friendly"]
+    },
+    {
+      "id": "dot-product",
+      "name": "Dot product & projections",
+      "difficulty": "medium",
+      "weightage": "high",
+      "tags": ["must-know", "pyq-heavy", "nta-trap"]
+    },
+    {
+      "id": "cross-product",
+      "name": "Cross product & area",
+      "difficulty": "medium",
+      "weightage": "high",
+      "tags": ["must-know", "pyq-heavy"]
+    },
+    {
+      "id": "direction-cosines",
+      "name": "Direction cosines & angle between vectors",
+      "difficulty": "medium",
+      "weightage": "high",
+      "tags": ["frequently-asked"]
+    }
+  ],
+  "formulas": [
+    {
+      "id": "unit-vector",
+      "expression": "â = a/|a| (for a ≠ 0)",
+      "tags": ["must-memorize"]
+    },
+    {
+      "id": "dot",
+      "expression": "a·b = |a||b|cosθ = axbx + ayby + azbz",
+      "tags": ["must-memorize", "frequently-asked"]
+    },
+    {
+      "id": "projection",
+      "expression": "Scalar projection of a on b = (a·b)/|b| ; Vector projection = ((a·b)/|b|^2) b",
+      "tags": ["frequently-asked", "dangerous-if-forgot"]
+    },
+    {
+      "id": "cross",
+      "expression": "|a×b| = |a||b|sinθ ; a×b = determinant(i, j, k; ax, ay, az; bx, by, bz)",
+      "tags": ["must-memorize", "frequently-asked"]
+    },
+    {
+      "id": "area-parallelogram",
+      "expression": "Area(parallelogram) = |a×b| ; Area(triangle) = (1/2)|a×b|",
+      "tags": ["frequently-asked"]
+    },
+    {
+      "id": "direction-cosines",
+      "expression": "If a = ax i + ay j + az k then cosα = ax/|a|, cosβ = ay/|a|, cosγ = az/|a| and cos^2α+cos^2β+cos^2γ=1",
+      "tags": ["frequently-asked", "nta-trap"]
+    }
+  ],
+  "shortcuts": [
+    "Angle check fast: if a·b = 0 => θ = 90° (perpendicular). If a·b > 0 => acute, if a·b < 0 => obtuse.",
+    "Area questions: prefer cross product magnitude; avoid coordinate geometry expansion if not needed.",
+    "In options, check sign + zero conditions first (orthogonal/parallel) to eliminate quickly."
+  ],
+  "traps": [
+    "Projection trap: divide by |b| vs |b|^2 — scalar projection uses |b|, vector projection uses |b|^2.",
+    "Direction cosines: students mix components with cosines; always normalize by |a|.",
+    "Cross product direction: right-hand rule; magnitude is positive, direction depends on order (a×b = -(b×a))."
+  ],
+  "pyqReference": [
+    { "year": 2019, "note": "Projection / dot-product based elimination" },
+    { "year": 2020, "note": "Angle between vectors from dot product" },
+    { "year": 2022, "note": "Area from cross product" },
+    { "year": 2024, "note": "Direction cosines / angle between lines-vectors" }
+  ]
+}
+

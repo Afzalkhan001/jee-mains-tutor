@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "subject": "chemistry",
+  "chapterId": "mole-concept",
+  "chapterName": "Some Basic Concepts of Chemistry (Mole Concept)",
+  "weightage": "high",
+  "difficulty": "easy",
+  "subtopics": [
+    {
+      "id": "moles-molar-mass",
+      "name": "Moles, molar mass, Avogadro number",
+      "difficulty": "easy",
+      "weightage": "high",
+      "tags": ["ncert-core", "frequently-asked"]
+    }
+  ],
+  "formulas": [
+    {
+      "id": "moles",
+      "expression": "n = mass / molar mass",
+      "tags": ["must-memorize"]
+    },
+    {
+      "id": "particles",
+      "expression": "Number of particles = n × N_A",
+      "tags": ["must-memorize", "frequently-asked"]
+    }
+  ],
+  "shortcuts": ["Use units as a safeguard: grams → moles → particles."],
+  "traps": ["Confusing atomic mass unit with grams; always convert to molar mass in g/mol."],
+  "pyqReference": [{ "year": 2019, "note": "Limiting reagent / mole ratio basics" }]
+}
+
