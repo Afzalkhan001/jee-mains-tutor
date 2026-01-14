@@ -80,6 +80,7 @@ async function callOpenAI({ systemPrompt, userMessage, nQuestions }, retries = 1
         },
         body: JSON.stringify({
           model: "gpt-4o-mini",
+          response_format: { type: "json_object" }, // FORCE VALID JSON
           temperature: 0.2,
           top_p: 0.9,
           max_tokens: maxTokens,
@@ -165,7 +166,7 @@ exports.handler = async (event) => {
   if (!normalized.ok) return json(400, { error: normalized.error });
 
   const userMessage = buildUserMessage(normalized);
-  const cacheKey = sha256(`quiz:v2|${userMessage}`); // bumped version due to better logic
+  const cacheKey = sha256(`quiz:v2|${userMessage}`); // bumped version
   const cached = cacheGet(cacheKey);
   if (cached) return json(200, { cached: true, cacheKey, quiz: cached });
 
@@ -176,6 +177,7 @@ exports.handler = async (event) => {
       nQuestions: normalized.nQuestions
     }, 1); // 1 retry allowed
 
+    // JSON mode guarantees valid JSON, but we still parse carefully
     const quiz = parseStrictJson(raw);
 
     // Validate quiz structure
@@ -191,9 +193,10 @@ exports.handler = async (event) => {
   } catch (err) {
     const errorMsg = err?.message || "Quiz service failed";
     console.error("Quiz generation error:", errorMsg, err);
+    // EXPOSE FULL ERROR DETAILS IN PRODUCTION FOR DEBUGGING
     return json(500, {
       error: errorMsg,
-      details: process.env.NODE_ENV === "production" ? undefined : String(err?.details || err?.message || err),
+      details: String(err?.details || err?.message || err),
     });
   }
 };
