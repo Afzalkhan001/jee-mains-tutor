@@ -125,7 +125,7 @@ function getMaxTokens(mode) {
   }
 }
 
-async function callOpenAI({ systemPrompt, userMessage, imageDataUrl, conversationHistory, mode }) {
+async function callOpenAI({ systemPrompt, userMessage, imageDataUrl, conversationHistory, mode }, retries = 1) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     const err = new Error("Missing OPENAI_API_KEY");
@@ -135,32 +135,37 @@ async function callOpenAI({ systemPrompt, userMessage, imageDataUrl, conversatio
 
   const messages = buildMessages({ systemPrompt, userMessage, imageDataUrl, conversationHistory });
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${apiKey}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      temperature: 0.3, // Slightly higher for more natural responses
-      top_p: 0.9,
-      max_tokens: getMaxTokens(mode),
-      messages,
-    }),
-  });
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          temperature: 0.3, // Slightly higher for more natural responses
+          top_p: 0.9,
+          max_tokens: getMaxTokens(mode),
+          messages,
+        }),
+      });
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    const err = new Error(`OpenAI error: ${res.status} ${res.statusText}`);
-    err.details = text;
-    throw err;
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`OpenAI error: ${res.status} ${res.statusText} - ${text}`);
+      }
+
+      const data = await res.json();
+      const content = data?.choices?.[0]?.message?.content;
+      if (!content) throw new Error("Empty OpenAI response");
+      return String(content);
+    } catch (err) {
+      if (attempt === retries) throw err;
+      await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)));
+    }
   }
-
-  const data = await res.json();
-  const content = data?.choices?.[0]?.message?.content;
-  if (!content) throw new Error("Empty OpenAI response");
-  return String(content);
 }
 
 // Simplified LaTeX cleanup - keep natural formatting

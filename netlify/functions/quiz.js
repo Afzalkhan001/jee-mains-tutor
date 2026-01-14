@@ -57,7 +57,7 @@ function buildUserMessage({ subject, topic, nQuestions, difficulty }) {
   return lines.join("\n");
 }
 
-async function callOpenAI({ systemPrompt, userMessage, nQuestions }) {
+async function callOpenAI({ systemPrompt, userMessage, nQuestions }, retries = 1) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     const err = new Error("Missing OPENAI_API_KEY");
@@ -66,62 +66,75 @@ async function callOpenAI({ systemPrompt, userMessage, nQuestions }) {
   }
 
   // Dynamic max_tokens: ~300 tokens per question for full explanations
-  // Minimum 1500, maximum 4500 to handle 3-15 questions
+  // Minimum 1500, maximum 4500 to handle 3-8 questions
   const maxTokens = Math.max(1500, Math.min(4500, nQuestions * 300));
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${apiKey}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      temperature: 0.2,
-      top_p: 0.9,
-      max_tokens: maxTokens,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userMessage },
-      ],
-    }),
-  });
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          temperature: 0.2,
+          top_p: 0.9,
+          max_tokens: maxTokens,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMessage },
+          ],
+        }),
+      });
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    const err = new Error(`OpenAI error: ${res.status} ${res.statusText}`);
-    err.details = text;
-    throw err;
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`OpenAI error: ${res.status} ${res.statusText} - ${text}`);
+      }
+
+      const data = await res.json();
+      const content = data?.choices?.[0]?.message?.content;
+      if (!content) throw new Error("Empty OpenAI response");
+      return String(content);
+    } catch (err) {
+      if (attempt === retries) throw err;
+      // Exponential backoff
+      await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)));
+    }
   }
+}
 
-  const data = await res.json();
-  const content = data?.choices?.[0]?.message?.content;
-  if (!content) throw new Error("Empty OpenAI response");
-  return String(content);
+function repairJson(broken) {
+  let cleaned = broken.trim();
+  // Remove markdown
+  cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "");
+
+  // Try to find the outermost braces
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    cleaned = cleaned.slice(start, end + 1);
+  } else {
+    // Basic repair: if it starts with { but misses end, try adding it
+    if (cleaned.startsWith("{") && !cleaned.endsWith("}")) cleaned += "}";
+  }
+  return cleaned;
 }
 
 function parseStrictJson(text) {
-  let cleaned = String(text).trim();
-
-  // Remove markdown code blocks if present
-  cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, "");
-  cleaned = cleaned.replace(/\n?```\s*$/i, "");
-  cleaned = cleaned.trim();
-
+  // First attempt: direct parse
   try {
-    return JSON.parse(cleaned);
-  } catch {
-    // Try to extract JSON from text
-    const start = cleaned.indexOf("{");
-    const end = cleaned.lastIndexOf("}");
-    if (start >= 0 && end > start) {
-      try {
-        return JSON.parse(cleaned.slice(start, end + 1));
-      } catch {
-        // Fall through to error
-      }
-    }
-    throw new Error("Invalid JSON from model. Raw response: " + cleaned.substring(0, 200));
+    return JSON.parse(text);
+  } catch { }
+
+  // Second attempt: cleanup markdown and extract object
+  const clean = repairJson(text);
+  try {
+    return JSON.parse(clean);
+  } catch (err) {
+    throw new Error(`Invalid JSON from model: ${err.message}. Raw: ${text.substring(0, 100)}...`);
   }
 }
 
@@ -151,7 +164,7 @@ exports.handler = async (event) => {
   if (!normalized.ok) return json(400, { error: normalized.error });
 
   const userMessage = buildUserMessage(normalized);
-  const cacheKey = sha256(`quiz:v1|${userMessage}`);
+  const cacheKey = sha256(`quiz:v2|${userMessage}`); // bumped version due to better logic
   const cached = cacheGet(cacheKey);
   if (cached) return json(200, { cached: true, cacheKey, quiz: cached });
 
@@ -160,7 +173,8 @@ exports.handler = async (event) => {
       systemPrompt: JEE_QUIZ_SYSTEM_PROMPT,
       userMessage,
       nQuestions: normalized.nQuestions
-    });
+    }, 1); // 1 retry allowed
+
     const quiz = parseStrictJson(raw);
 
     // Validate quiz structure
@@ -182,4 +196,3 @@ exports.handler = async (event) => {
     });
   }
 };
-
