@@ -98,22 +98,22 @@ export function QuizClient() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ topic: topic.trim(), nQuestions, difficulty }),
       });
-      
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData?.error || `Quiz failed (${res.status})`);
       }
-      
+
       const data = await res.json();
       if (!data.quiz) {
         throw new Error("Invalid quiz response: missing quiz data");
       }
-      
+
       const q = data.quiz as QuizDoc;
       if (!q.items || !Array.isArray(q.items) || q.items.length === 0) {
         throw new Error("Invalid quiz: no questions generated");
       }
-      
+
       setQuiz(q);
       setStoredJson(cacheKey, q, { ttlMs: 1000 * 60 * 60 * 24 * 14 });
     } catch (e) {
@@ -195,15 +195,25 @@ export function QuizClient() {
             />
           </label>
           <label className="grid gap-1.5">
-            <div className="text-xs font-semibold text-zinc-700">Questions</div>
+            <div className="flex items-center gap-1">
+              <span className="text-xs font-semibold text-zinc-700">Questions</span>
+              <span className="text-[10px] text-zinc-400 font-medium bg-zinc-100 px-1.5 rounded">Max 8</span>
+            </div>
             <input
               type="number"
               min={3}
-              max={15}
+              max={8}
               value={nQuestions}
-              onChange={(e) => setNQuestions(Number(e.target.value))}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                if (val > 8) setNQuestions(8);
+                else setNQuestions(val);
+              }}
               className="h-11 rounded-xl border border-zinc-200 bg-zinc-50 px-4 text-sm text-zinc-900 transition-all focus:border-blue-300 focus:bg-white focus:shadow-sm focus-ring"
             />
+            <div className="text-[10px] text-amber-600 leading-tight">
+              Limited to 8 to prevent timeouts on free server.
+            </div>
           </label>
           <label className="grid gap-1.5">
             <div className="text-xs font-semibold text-zinc-700">Difficulty</div>
@@ -269,17 +279,16 @@ export function QuizClient() {
               </div>
             </div>
             <div className="text-right">
-              <div className={`text-4xl font-black ${
-                score.percentage >= 80 ? "text-green-600" :
-                score.percentage >= 50 ? "text-amber-600" :
-                "text-red-600"
-              } score-animate`}>
+              <div className={`text-4xl font-black ${score.percentage >= 80 ? "text-green-600" :
+                  score.percentage >= 50 ? "text-amber-600" :
+                    "text-red-600"
+                } score-animate`}>
                 {score.percentage}%
               </div>
               <div className="text-sm text-zinc-600">
                 {score.percentage >= 80 ? "Excellent! 🎯" :
-                 score.percentage >= 50 ? "Good effort! 💪" :
-                 "Keep practicing! 📚"}
+                  score.percentage >= 50 ? "Good effort! 💪" :
+                    "Keep practicing! 📚"}
               </div>
             </div>
           </div>
@@ -300,13 +309,12 @@ export function QuizClient() {
             const isCorrectAnswer = submitted && chosen === q.correctIndex;
 
             return (
-              <div 
-                key={q.id} 
-                className={`rounded-2xl border p-5 shadow-sm transition-all animate-slide-up ${
-                  isCorrectAnswer ? "border-green-300 bg-green-50/50" :
-                  isWrong ? "border-red-300 bg-red-50/50" :
-                  "border-zinc-200 bg-white"
-                }`}
+              <div
+                key={q.id}
+                className={`rounded-2xl border p-5 shadow-sm transition-all animate-slide-up ${isCorrectAnswer ? "border-green-300 bg-green-50/50" :
+                    isWrong ? "border-red-300 bg-red-50/50" :
+                      "border-zinc-200 bg-white"
+                  }`}
               >
                 {/* Question Header */}
                 <div className="flex items-center gap-2 mb-3">
@@ -314,15 +322,13 @@ export function QuizClient() {
                     {qi + 1}
                   </span>
                   <span className="text-xs font-medium text-zinc-500">{q.topic}</span>
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                    q.difficulty === "easy" ? "bg-green-100 text-green-700" :
-                    q.difficulty === "medium" ? "bg-yellow-100 text-yellow-700" :
-                    "bg-red-100 text-red-700"
-                  }`}>{q.difficulty}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${q.difficulty === "easy" ? "bg-green-100 text-green-700" :
+                      q.difficulty === "medium" ? "bg-yellow-100 text-yellow-700" :
+                        "bg-red-100 text-red-700"
+                    }`}>{q.difficulty}</span>
                   {submitted && (
-                    <span className={`ml-auto rounded-full px-2 py-0.5 text-xs font-bold ${
-                      isCorrectAnswer ? "bg-green-500 text-white" : isWrong ? "bg-red-500 text-white" : "bg-zinc-200"
-                    }`}>
+                    <span className={`ml-auto rounded-full px-2 py-0.5 text-xs font-bold ${isCorrectAnswer ? "bg-green-500 text-white" : isWrong ? "bg-red-500 text-white" : "bg-zinc-200"
+                      }`}>
                       {isCorrectAnswer ? "✓ Correct" : isWrong ? "✗ Wrong" : "Skipped"}
                     </span>
                   )}
@@ -345,8 +351,7 @@ export function QuizClient() {
                         key={op}
                         onClick={() => pick(q.id, idx)}
                         disabled={submitted}
-                        className={`quiz-option rounded-xl border p-3 text-left text-sm transition-all ${
-                          submitted
+                        className={`quiz-option rounded-xl border p-3 text-left text-sm transition-all ${submitted
                             ? isCorrect
                               ? "correct"
                               : isChosen
@@ -355,7 +360,7 @@ export function QuizClient() {
                             : isChosen
                               ? "selected"
                               : ""
-                        }`}
+                          }`}
                       >
                         <span className="mr-3 inline-flex h-6 w-6 items-center justify-center rounded-full bg-zinc-100 text-xs font-bold text-zinc-700">
                           {String.fromCharCode(65 + oi)}
