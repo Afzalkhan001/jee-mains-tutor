@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { sha256Hex } from "@/lib/crypto/sha256";
 import { getStoredJson, setStoredJson } from "@/lib/storage/local";
+import { saveCurrentSession, loadSession } from "@/lib/storage/indexeddb";
 
 type Mode = "Beginner" | "Revision" | "Advanced (200+)";
 
@@ -108,25 +109,64 @@ export function ChatClient() {
   // Bump version to invalidate old cached conversations / old "hi" replies.
   const storageKey = "chat:v2";
 
+  // Generate a stable session ID for IndexedDB storage
+  const sessionId = useMemo(() => {
+    if (typeof window === "undefined") return "default";
+    let id = window.localStorage.getItem("chat_session_id");
+    if (!id) {
+      id = `session_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+      window.localStorage.setItem("chat_session_id", id);
+    }
+    return id;
+  }, []);
+
   useEffect(() => {
-    const saved = getStoredJson<ChatMsg[]>(storageKey);
-    if (saved?.length) setMessages(saved);
-    else {
+    // Try to load from IndexedDB first, then localStorage fallback
+    (async () => {
+      const idbMessages = await loadSession(sessionId);
+      if (idbMessages && idbMessages.length > 0) {
+        setMessages(idbMessages as ChatMsg[]);
+        return;
+      }
+
+      const saved = getStoredJson<ChatMsg[]>(storageKey);
+      if (saved?.length) {
+        setMessages(saved);
+        return;
+      }
+
+      // New session - show welcome message
       setMessages([
         {
           id: nowId("a"),
           role: "assistant",
           createdAt: Date.now(),
-          text:
-            "- Definition:\n- Formula:\n- Explanation:\n- Common mistakes:\n- NTA trap alert:\n- PYQ hint:\n- Ask me any JEE MAINS doubt (Math/Physics/Chemistry). You can also upload a screenshot.\n- For a quiz, type: /quiz topic=Vectors n=5 difficulty=mixed",
+          text: `👋 Welcome! I'm your JEE Mains tutor.
+
+I can help you with:
+• **Concept explanations** — I'll explain the "why" behind formulas, not just list them
+• **Problem solving** — Upload a screenshot or type your question
+• **Exam strategies** — NTA patterns, common traps, and PYQ insights
+• **Quick revision** — Switch to "Revision" mode for concise summaries
+
+**Try asking:**
+"Explain kinematics and derive the equations of motion"
+"What are the most important topics in Organic Chemistry?"
+"Help me understand projectile motion"
+
+💡 **Tip:** I remember our conversation, so feel free to ask follow-up questions!`,
         },
       ]);
-    }
-  }, []);
+    })();
+  }, [sessionId]);
 
   useEffect(() => {
+    // Save to both localStorage (for quick access) and IndexedDB (for persistence)
     setStoredJson(storageKey, messages);
-  }, [messages]);
+    if (messages.length > 0) {
+      saveCurrentSession(sessionId, messages).catch(() => { });
+    }
+  }, [messages, sessionId]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
@@ -163,17 +203,17 @@ export function ChatClient() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ topic, nQuestions, difficulty }),
     });
-    
+
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       throw new Error(errorData?.error || `Quiz failed (${res.status})`);
     }
-    
+
     const data = await res.json();
     if (!data.quiz) {
       throw new Error("Invalid quiz response: missing quiz data");
     }
-    
+
     setStoredJson(localKey, data.quiz, { ttlMs: 1000 * 60 * 60 * 24 * 14 });
     return { quiz: data.quiz, fromCache: false, localKey };
   }
@@ -242,6 +282,14 @@ export function ChatClient() {
         return;
       }
 
+      // Build conversation history for context-aware responses (last 6 messages)
+      const conversationHistory = messages
+        .slice(-6)
+        .map(m => ({
+          role: m.role,
+          text: m.text,
+        }));
+
       const res = await fetch("/api/tutor", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -249,6 +297,7 @@ export function ChatClient() {
           mode,
           question: trimmed || undefined,
           imageDataUrl: imageDataUrl || undefined,
+          conversationHistory,
         }),
       });
       const data = (await res.json()) as TutorResponse | { error: string };
@@ -282,7 +331,7 @@ export function ChatClient() {
             </div>
             <div>
               <h1 className="text-lg font-bold tracking-tight gradient-text">JEE Tutor AI</h1>
-              <div className="text-xs text-zinc-500">Bullet-only · Formula-first · Any topic</div>
+              <div className="text-xs text-zinc-500">Deep explanations · Context-aware · Any topic</div>
             </div>
           </div>
           <div className="flex items-center gap-2">

@@ -37,6 +37,11 @@ function normalizeInput(body) {
   const question = String(body.question || "").trim();
   const imageDataUrl = String(body.imageDataUrl || "").trim(); // optional: data:image/...;base64,...
 
+  // Conversation history for context-aware responses
+  const conversationHistory = Array.isArray(body.conversationHistory)
+    ? body.conversationHistory.slice(-6) // Limit to last 6 messages
+    : [];
+
   if (!mode) {
     return { ok: false, error: "Missing required field: mode" };
   }
@@ -64,7 +69,7 @@ function normalizeInput(body) {
     return { ok: false, error: "Image too large. Please upload a smaller screenshot (try crop) and retry." };
   }
 
-  return { ok: true, subject, chapter, subtopic, mode, question, imageDataUrl };
+  return { ok: true, subject, chapter, subtopic, mode, question, imageDataUrl, conversationHistory };
 }
 
 function buildUserMessage({ subject, chapter, subtopic, mode, question }) {
@@ -73,17 +78,62 @@ function buildUserMessage({ subject, chapter, subtopic, mode, question }) {
   if (chapter) lines.push(`Chapter: ${chapter}`);
   if (subtopic) lines.push(`Subtopic: ${subtopic}`);
   lines.push(`Tutor mode: ${mode}`);
-  if (question) lines.push(`Question: ${question}`);
+  if (question) lines.push(`\nStudent's question: ${question}`);
   return lines.join("\n");
 }
 
-async function callOpenAI({ systemPrompt, userMessage, imageDataUrl }) {
+// Build conversation messages array for OpenAI API
+function buildMessages({ systemPrompt, userMessage, imageDataUrl, conversationHistory }) {
+  const messages = [{ role: "system", content: systemPrompt }];
+
+  // Add conversation history for context
+  for (const msg of conversationHistory) {
+    if (msg.role === "user" && msg.text) {
+      messages.push({ role: "user", content: msg.text });
+    } else if (msg.role === "assistant" && msg.text) {
+      messages.push({ role: "assistant", content: msg.text });
+    }
+  }
+
+  // Add the current user message
+  if (imageDataUrl) {
+    messages.push({
+      role: "user",
+      content: [
+        { type: "text", text: userMessage },
+        { type: "image_url", image_url: { url: imageDataUrl } },
+      ],
+    });
+  } else {
+    messages.push({ role: "user", content: userMessage });
+  }
+
+  return messages;
+}
+
+// Get max tokens based on mode - increased for thorough explanations
+function getMaxTokens(mode) {
+  switch (mode) {
+    case "Beginner":
+      return 1200; // Was 550 - need room for detailed explanations
+    case "Revision":
+      return 800;  // Was 380 - still concise but not too restrictive
+    case "Advanced (200+)":
+      return 1600; // Was 750 - need room for derivations and edge cases
+    default:
+      return 1000;
+  }
+}
+
+async function callOpenAI({ systemPrompt, userMessage, imageDataUrl, conversationHistory, mode }) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     const err = new Error("Missing OPENAI_API_KEY");
     err.code = "NO_KEY";
     throw err;
   }
+
+  const messages = buildMessages({ systemPrompt, userMessage, imageDataUrl, conversationHistory });
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -93,25 +143,10 @@ async function callOpenAI({ systemPrompt, userMessage, imageDataUrl }) {
     },
     body: JSON.stringify({
       model: "gpt-4o-mini",
-      temperature: 0.2,
+      temperature: 0.3, // Slightly higher for more natural responses
       top_p: 0.9,
-      max_tokens: userMessage.includes("Tutor mode: Beginner")
-        ? 550
-        : userMessage.includes("Tutor mode: Revision")
-          ? 380
-          : 750,
-      messages: [
-        { role: "system", content: systemPrompt },
-        imageDataUrl
-          ? {
-              role: "user",
-              content: [
-                { type: "text", text: userMessage },
-                { type: "image_url", image_url: { url: imageDataUrl } },
-              ],
-            }
-          : { role: "user", content: userMessage },
-      ],
+      max_tokens: getMaxTokens(mode),
+      messages,
     }),
   });
 
@@ -128,27 +163,39 @@ async function callOpenAI({ systemPrompt, userMessage, imageDataUrl }) {
   return String(content);
 }
 
-function enforceBulletOnly(text) {
-  // Safety post-processor: ensure each non-empty line is a bullet.
-  const lines = String(text)
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
-
-  const bulletLines = lines.map((l) => (l.startsWith("- ") ? l : `- ${l.replace(/^[-•]\s*/, "")}`));
-  return bulletLines.join("\n");
-}
-
-function simplifyLatexToPlain(text) {
+// Simplified LaTeX cleanup - keep natural formatting
+function cleanupResponse(text) {
   let s = String(text);
+
+  // Remove LaTeX delimiters if present
   s = s.replace(/\\\(|\\\)|\\\[|\\\]/g, "");
+
+  // Convert common LaTeX to readable format
   s = s.replace(/\\hat\{([^}]+)\}/g, "$1_hat");
+  s = s.replace(/\\vec\{([^}]+)\}/g, "$1_vec");
   s = s.replace(/\\sqrt\{([^}]+)\}/g, "sqrt($1)");
   s = s.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "($1)/($2)");
-  s = s.replace(/\\/g, "");
+  s = s.replace(/\\times/g, "×");
+  s = s.replace(/\\cdot/g, "·");
+  s = s.replace(/\\pm/g, "±");
+  s = s.replace(/\\leq/g, "≤");
+  s = s.replace(/\\geq/g, "≥");
+  s = s.replace(/\\neq/g, "≠");
+  s = s.replace(/\\approx/g, "≈");
+  s = s.replace(/\\theta/g, "θ");
+  s = s.replace(/\\alpha/g, "α");
+  s = s.replace(/\\beta/g, "β");
+  s = s.replace(/\\gamma/g, "γ");
+  s = s.replace(/\\omega/g, "ω");
+  s = s.replace(/\\pi/g, "π");
+  s = s.replace(/\\Delta/g, "Δ");
+  s = s.replace(/\\infty/g, "∞");
+
+  // Remove remaining backslashes from LaTeX commands
+  s = s.replace(/\\([a-zA-Z]+)/g, "$1");
   s = s.replace(/[{}]/g, "");
-  s = s.replace(/\s{2,}/g, " ").trim();
-  return s;
+
+  return s.trim();
 }
 
 exports.handler = async (event) => {
@@ -177,7 +224,12 @@ exports.handler = async (event) => {
   if (!normalized.ok) return json(400, { error: normalized.error });
 
   const userMessage = buildUserMessage(normalized);
-  const cacheKey = sha256(`v2|${userMessage}|img:${normalized.imageDataUrl ? sha256(normalized.imageDataUrl) : "none"}`);
+
+  // Include conversation history in cache key for context-aware caching
+  const historyHash = normalized.conversationHistory.length > 0
+    ? sha256(JSON.stringify(normalized.conversationHistory.map(m => m.text || "")))
+    : "none";
+  const cacheKey = sha256(`v3|${userMessage}|img:${normalized.imageDataUrl ? sha256(normalized.imageDataUrl) : "none"}|hist:${historyHash}`);
 
   const cached = cacheGet(cacheKey);
   if (cached) {
@@ -189,8 +241,10 @@ exports.handler = async (event) => {
       systemPrompt: JEE_TUTOR_SYSTEM_PROMPT,
       userMessage,
       imageDataUrl: normalized.imageDataUrl || "",
+      conversationHistory: normalized.conversationHistory,
+      mode: normalized.mode,
     });
-    const output = enforceBulletOnly(simplifyLatexToPlain(raw));
+    const output = cleanupResponse(raw);
     cacheSet(cacheKey, output);
     return json(200, { cached: false, cacheKey, output });
   } catch (err) {
@@ -202,4 +256,3 @@ exports.handler = async (event) => {
     });
   }
 };
-
