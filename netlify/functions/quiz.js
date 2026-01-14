@@ -55,13 +55,17 @@ function buildUserMessage({ subject, topic, nQuestions, difficulty }) {
   return lines.join("\n");
 }
 
-async function callOpenAI({ systemPrompt, userMessage }) {
+async function callOpenAI({ systemPrompt, userMessage, nQuestions }) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     const err = new Error("Missing OPENAI_API_KEY");
     err.code = "NO_KEY";
     throw err;
   }
+
+  // Dynamic max_tokens: ~300 tokens per question for full explanations
+  // Minimum 1500, maximum 4500 to handle 3-15 questions
+  const maxTokens = Math.max(1500, Math.min(4500, nQuestions * 300));
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -73,7 +77,7 @@ async function callOpenAI({ systemPrompt, userMessage }) {
       model: "gpt-4o-mini",
       temperature: 0.2,
       top_p: 0.9,
-      max_tokens: 1200,
+      max_tokens: maxTokens,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userMessage },
@@ -95,16 +99,27 @@ async function callOpenAI({ systemPrompt, userMessage }) {
 }
 
 function parseStrictJson(text) {
+  let cleaned = String(text).trim();
+  
+  // Remove markdown code blocks if present
+  cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, "");
+  cleaned = cleaned.replace(/\n?```\s*$/i, "");
+  cleaned = cleaned.trim();
+  
   try {
-    return JSON.parse(text);
+    return JSON.parse(cleaned);
   } catch {
-    // Attempt salvage if model accidentally wraps JSON in text
-    const start = text.indexOf("{");
-    const end = text.lastIndexOf("}");
+    // Try to extract JSON from text
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
     if (start >= 0 && end > start) {
-      return JSON.parse(text.slice(start, end + 1));
+      try {
+        return JSON.parse(cleaned.slice(start, end + 1));
+      } catch {
+        // Fall through to error
+      }
     }
-    throw new Error("Invalid JSON from model");
+    throw new Error("Invalid JSON from model. Raw response: " + cleaned.substring(0, 200));
   }
 }
 
@@ -139,13 +154,28 @@ exports.handler = async (event) => {
   if (cached) return json(200, { cached: true, cacheKey, quiz: cached });
 
   try {
-    const raw = await callOpenAI({ systemPrompt: JEE_QUIZ_SYSTEM_PROMPT, userMessage });
+    const raw = await callOpenAI({ 
+      systemPrompt: JEE_QUIZ_SYSTEM_PROMPT, 
+      userMessage, 
+      nQuestions: normalized.nQuestions 
+    });
     const quiz = parseStrictJson(raw);
+    
+    // Validate quiz structure
+    if (!quiz || typeof quiz !== "object") {
+      throw new Error("Invalid quiz structure: expected object");
+    }
+    if (!Array.isArray(quiz.items)) {
+      throw new Error("Invalid quiz structure: missing items array");
+    }
+    
     cacheSet(cacheKey, quiz);
     return json(200, { cached: false, cacheKey, quiz });
   } catch (err) {
+    const errorMsg = err?.message || "Quiz service failed";
+    console.error("Quiz generation error:", errorMsg, err);
     return json(500, {
-      error: "Quiz service failed",
+      error: errorMsg,
       details: process.env.NODE_ENV === "production" ? undefined : String(err?.details || err?.message || err),
     });
   }

@@ -17,7 +17,7 @@ export default function Home() {
             </div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-2">
               Your AI Tutor for 200+ Score
-            </h1>
+          </h1>
             <p className="text-blue-100 text-sm md:text-base max-w-lg mb-5">
               Allen/FIITJEE-level coaching in your pocket. Bullet-only explanations, formula-first approach, and instant doubt solving.
             </p>
@@ -31,7 +31,7 @@ export default function Home() {
               <Link
                 href="/quiz"
                 className="inline-flex items-center gap-2 rounded-xl bg-white/20 backdrop-blur-sm px-5 py-3 text-sm font-semibold text-white border border-white/30 transition-all hover:bg-white/30 btn-interactive"
-              >
+            >
                 📝 Take Quiz
               </Link>
             </div>
@@ -53,7 +53,7 @@ export default function Home() {
             >
               <div className={`inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${item.gradient} text-2xl mb-3 shadow-md group-hover:scale-110 transition-transform`}>
                 {item.icon}
-              </div>
+        </div>
               <div className="font-semibold text-zinc-900">{item.title}</div>
               <div className="text-sm text-zinc-500">{item.desc}</div>
             </Link>
@@ -73,7 +73,7 @@ export default function Home() {
                 key={subj.href}
                 href={subj.href}
                 className="group rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm transition-all hover:shadow-lg card-hover"
-              >
+          >
                 <div className="flex items-center gap-3 mb-3">
                   <span className="text-3xl">{subj.icon}</span>
                   <div>
@@ -110,7 +110,7 @@ export default function Home() {
                 </div>
               </div>
             ))}
-          </div>
+        </div>
         </section>
 
         {/* Motivation Quote */}
@@ -118,7 +118,7 @@ export default function Home() {
           <div className="text-2xl mb-2">&ldquo;Discipline is choosing between what you want now and what you want most.&rdquo;</div>
           <div className="text-zinc-400 text-sm">— Focus on your 200+ score goal 🎯</div>
         </section>
-      </div>
+    </div>
     </AppShell>
   );
 }

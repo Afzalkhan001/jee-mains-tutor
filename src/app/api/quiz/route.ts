@@ -32,9 +32,13 @@ function buildUserMessage(x: { topic: string; nQuestions: number; difficulty: st
   ].join("\n");
 }
 
-async function callOpenAI(userMessage: string) {
+async function callOpenAI(userMessage: string, nQuestions: number) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("Missing OPENAI_API_KEY");
+
+  // Dynamic max_tokens: ~300 tokens per question for full explanations
+  // Minimum 1500, maximum 4500 to handle 3-15 questions
+  const maxTokens = Math.max(1500, Math.min(4500, nQuestions * 300));
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -46,7 +50,7 @@ async function callOpenAI(userMessage: string) {
       model: "gpt-4o-mini",
       temperature: 0.2,
       top_p: 0.9,
-      max_tokens: 1200,
+      max_tokens: maxTokens,
       messages: [
         { role: "system", content: JEE_QUIZ_SYSTEM_PROMPT },
         { role: "user", content: userMessage },
@@ -91,13 +95,24 @@ export async function POST(req: Request) {
   if (cached) return NextResponse.json({ cached: true, cacheKey, quiz: cached });
 
   try {
-    const raw = await callOpenAI(userMessage);
+    const raw = await callOpenAI(userMessage, n.nQuestions);
     const quiz = parseStrictJson(raw);
+    
+    // Validate quiz structure
+    if (!quiz || typeof quiz !== "object") {
+      throw new Error("Invalid quiz structure: expected object");
+    }
+    if (!Array.isArray((quiz as { items?: unknown }).items)) {
+      throw new Error("Invalid quiz structure: missing items array");
+    }
+    
     cacheSet(cacheKey, quiz, 1000 * 60 * 60 * 24); // 24h
     return NextResponse.json({ cached: false, cacheKey, quiz });
   } catch (e) {
+    const errorMsg = e instanceof Error ? e.message : "Quiz failed";
+    console.error("Quiz generation error:", errorMsg, e);
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Quiz failed" },
+      { error: errorMsg },
       { status: 500 }
     );
   }

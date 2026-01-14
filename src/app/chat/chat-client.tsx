@@ -163,8 +163,17 @@ export function ChatClient() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ topic, nQuestions, difficulty }),
     });
+    
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData?.error || `Quiz failed (${res.status})`);
+    }
+    
     const data = await res.json();
-    if (!res.ok) throw new Error(data?.error || "Quiz failed");
+    if (!data.quiz) {
+      throw new Error("Invalid quiz response: missing quiz data");
+    }
+    
     setStoredJson(localKey, data.quiz, { ttlMs: 1000 * 60 * 60 * 24 * 14 });
     return { quiz: data.quiz, fromCache: false, localKey };
   }

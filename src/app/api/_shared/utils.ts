@@ -40,13 +40,27 @@ export function simplifyLatexToPlain(text: string) {
 }
 
 export function parseStrictJson(text: string) {
+  let cleaned = String(text).trim();
+  
+  // Remove markdown code blocks if present
+  cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, "");
+  cleaned = cleaned.replace(/\n?```\s*$/i, "");
+  cleaned = cleaned.trim();
+  
   try {
-    return JSON.parse(text);
+    return JSON.parse(cleaned);
   } catch {
-    const start = text.indexOf("{");
-    const end = text.lastIndexOf("}");
-    if (start >= 0 && end > start) return JSON.parse(text.slice(start, end + 1));
-    throw new Error("Invalid JSON from model");
+    // Try to extract JSON from text
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      try {
+        return JSON.parse(cleaned.slice(start, end + 1));
+      } catch {
+        // Fall through to error
+      }
+    }
+    throw new Error("Invalid JSON from model. Raw response: " + cleaned.substring(0, 200));
   }
 }
 
