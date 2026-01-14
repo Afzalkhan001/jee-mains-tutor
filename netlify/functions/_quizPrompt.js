@@ -18,6 +18,7 @@ module.exports.JEE_QUIZ_SYSTEM_PROMPT = [
   "3. **Options**: MUST include 'Trap Options' (common distractor answers derived from typical student mistakes).",
   "4. **No Ambiguity**: Numbers and wording must be precise.",
   "5. **Numerical Type**: Even though these are MCQs, include questions that require calculation like Section B.",
+  "6. **Spelling Correction**: If the input topic has a typo (e.g., 'elctrostatics'), infer the correct JEE topic and generate questions for that.",
   "",
   "CONTENT GUIDELINES:",
   "- **Physics**: Include unit conversion traps, sign convention errors.",

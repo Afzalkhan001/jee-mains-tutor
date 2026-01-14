@@ -50,7 +50,8 @@ function buildUserMessage({ subject, topic, nQuestions, difficulty }) {
   const lines = [];
   lines.push(`Create a quiz for JEE MAINS.`);
   if (subject) lines.push(`Subject preference: ${subject}`);
-  lines.push(`Topic: ${topic}`);
+  // Add explicit instruction to handle typos
+  lines.push(`Topic: "${topic}" (please infer the intended JEE topic if misspelled)`);
   lines.push(`Number of questions: ${nQuestions}`);
   lines.push(`Difficulty: ${difficulty}`);
   lines.push(`Return strict JSON as per schema. Use unique ids.`);

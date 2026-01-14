@@ -193,6 +193,9 @@ export function QuizClient() {
               className="h-11 rounded-xl border border-zinc-200 bg-zinc-50 px-4 text-sm text-zinc-900 placeholder:text-zinc-400 transition-all focus:border-blue-300 focus:bg-white focus:shadow-sm focus-ring"
               placeholder="Vectors / Kinematics / Mole Concept..."
             />
+            <div className="text-[10px] text-zinc-400 leading-tight pl-1">
+              Typos? No problem. We'll figure it out.
+            </div>
           </label>
           <label className="grid gap-1.5">
             <div className="flex items-center gap-1">
@@ -280,8 +283,8 @@ export function QuizClient() {
             </div>
             <div className="text-right">
               <div className={`text-4xl font-black ${score.percentage >= 80 ? "text-green-600" :
-                  score.percentage >= 50 ? "text-amber-600" :
-                    "text-red-600"
+                score.percentage >= 50 ? "text-amber-600" :
+                  "text-red-600"
                 } score-animate`}>
                 {score.percentage}%
               </div>
@@ -312,8 +315,8 @@ export function QuizClient() {
               <div
                 key={q.id}
                 className={`rounded-2xl border p-5 shadow-sm transition-all animate-slide-up ${isCorrectAnswer ? "border-green-300 bg-green-50/50" :
-                    isWrong ? "border-red-300 bg-red-50/50" :
-                      "border-zinc-200 bg-white"
+                  isWrong ? "border-red-300 bg-red-50/50" :
+                    "border-zinc-200 bg-white"
                   }`}
               >
                 {/* Question Header */}
@@ -323,8 +326,8 @@ export function QuizClient() {
                   </span>
                   <span className="text-xs font-medium text-zinc-500">{q.topic}</span>
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${q.difficulty === "easy" ? "bg-green-100 text-green-700" :
-                      q.difficulty === "medium" ? "bg-yellow-100 text-yellow-700" :
-                        "bg-red-100 text-red-700"
+                    q.difficulty === "medium" ? "bg-yellow-100 text-yellow-700" :
+                      "bg-red-100 text-red-700"
                     }`}>{q.difficulty}</span>
                   {submitted && (
                     <span className={`ml-auto rounded-full px-2 py-0.5 text-xs font-bold ${isCorrectAnswer ? "bg-green-500 text-white" : isWrong ? "bg-red-500 text-white" : "bg-zinc-200"
@@ -352,14 +355,14 @@ export function QuizClient() {
                         onClick={() => pick(q.id, idx)}
                         disabled={submitted}
                         className={`quiz-option rounded-xl border p-3 text-left text-sm transition-all ${submitted
-                            ? isCorrect
-                              ? "correct"
-                              : isChosen
-                                ? "incorrect"
-                                : ""
+                          ? isCorrect
+                            ? "correct"
                             : isChosen
-                              ? "selected"
+                              ? "incorrect"
                               : ""
+                          : isChosen
+                            ? "selected"
+                            : ""
                           }`}
                       >
                         <span className="mr-3 inline-flex h-6 w-6 items-center justify-center rounded-full bg-zinc-100 text-xs font-bold text-zinc-700">
